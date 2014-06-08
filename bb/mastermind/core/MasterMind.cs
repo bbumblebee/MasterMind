@@ -8,7 +8,6 @@ namespace bb.mastermind.core
 	using MoveNode = bb.mastermind.tree.MoveNode;
 	using RootNode = bb.mastermind.tree.RootNode;
 	using SymmetryEnvironment = bb.mastermind.tree.SymmetryEnvironment;
-	using OneStepAheadWorker = bb.mastermind.workerthreads.OneStepAheadWorker;
 	using ResultSet = bb.mastermind.workerthreads.ResultSet;
     using System.Threading.Tasks;
 
@@ -55,11 +54,42 @@ namespace bb.mastermind.core
 		{
 			AssessmentManager manager = new AssessmentManager(config, assessor, currentPos.PossibilitySize);
 			SymmetryEnvironment symmetryEnvironment = new SymmetryEnvironment(currentPos);
-			ResultSet result = new ResultSet(symmetryEnvironment, config);
-            Parallel.For(short.MinValue, short.MinValue + config.combinations, i => new OneStepAheadWorker(result, manager.getSetAssessor(), currentPos.addTemporarySubMove((short)i)).run());
+			ResultSet resultSet = new ResultSet(symmetryEnvironment, config);
+            Parallel.For(short.MinValue, short.MinValue + config.combinations, m => {
+                MoveNode testMove = currentPos.addTemporarySubMove((short)m);
+                PossibilityDivisionAssessor assess = manager.getSetAssessor();
+                if (!resultSet.symmetryEnvironment.checkSymmetry(testMove))
+                {
+                    return;
+                }
+                for (int i = 0; i < resultSet.config.grades; i++)
+                {
+                    MoveNode.GradeNode tempGrade = testMove.addSubGrade(i);
+                    if (tempGrade.PossibilitySize == 0)
+                    {
+                        tempGrade.unregister();
+                        continue;
+                    }
+                    assess.updateNextIndividual(tempGrade.PossibilitySize);
+                    if (!assess.check(resultSet.config.grades - i - 1))
+                    {
+                        return;
+                    }
+                }
+                lock (resultSet)
+                {
+                    if (!assess.check(0))
+                    {
+                        return;
+                    }
+                    assess.updateBestValue();
+                    testMove.AssessmentValue = assess.CurrentSetValue;
+                    resultSet.BestMove = testMove;
+                }
+            });
 
-			currentPos.addSubNode(result.BestMove);
-			return result.BestMove;
+			currentPos.addSubNode(resultSet.BestMove);
+			return resultSet.BestMove;
 		}
 
 	}
