@@ -15,7 +15,6 @@ namespace bb.mastermind.assessment
 	{
 		internal double globalBest;
 		private readonly Config config;
-		private readonly ReaderWriterLock @lock = new ReaderWriterLock();
 		private ConstructorInfo constructor;
 		public readonly int wholeSize;
 
@@ -39,27 +38,11 @@ namespace bb.mastermind.assessment
 		{
 			get
 			{
-				try
-				{
-					@lock.AcquireReaderLock(-1);
-					return globalBest;
-				}
-				finally
-				{
-					@lock.ReleaseReaderLock();
-				}
+				return globalBest;
 			}
 			set
 			{
-				try
-				{
-					@lock.AcquireWriterLock(-1);
-					this.globalBest = value;
-				}
-				finally
-				{
-					@lock.ReleaseWriterLock();
-				}
+				this.globalBest = value;
 			}
 		}
 
