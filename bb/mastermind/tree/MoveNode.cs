@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace bb.mastermind.tree
 {
@@ -13,14 +14,13 @@ namespace bb.mastermind.tree
 	public class MoveNode
 	{
 		public readonly Config config;
-		private readonly short move;
+		private readonly int[] move;
 		private double assessmentValue;
-		private int[] pegsCache;
 		private readonly GradeNode parent;
 		public readonly HashSet<GradeNode> subGradeNodeList;
 
 		/* Construction and TreeAdding Methods */
-		protected internal MoveNode(short move, GradeNode parent, Config config)
+		protected internal MoveNode(int[] move, GradeNode parent, Config config)
 		{
 			this.move = move;
 			this.parent = parent;
@@ -42,9 +42,9 @@ namespace bb.mastermind.tree
 		/// </summary>
 		/// <param name="move2"> the result, against which this move should be graded </param>
 		/// <returns> a byte array of length 2 with a[0] = blacks and a[1] = whites </returns>
-		public virtual sbyte[] gradeThisMove(sbyte[] move2)
+		public virtual int[] gradeThisMove(int[] move2)
 		{
-			int[] move1 = SinglePegs;
+			int[] move1 = Move;
 			int checkBlack = 0;
 			int checkWhite = 0;
 
@@ -67,7 +67,7 @@ namespace bb.mastermind.tree
 				checkWhite += Math.Max(color, (sbyte)0);
 			}
 			checkWhite = config.pegs - checkWhite - checkBlack;
-			return new sbyte[]{(sbyte) checkBlack, (sbyte) checkWhite};
+			return new int[]{ checkBlack, checkWhite};
 		}
 
 		public virtual GradeNode pruneSubGrades(int gradeID)
@@ -87,19 +87,7 @@ namespace bb.mastermind.tree
 		}
 
 		/* Getters */
-		public virtual int[] SinglePegs
-		{
-			get
-			{
-				if (pegsCache == null)
-				{
-					return pegsCache = config.getSinglePegs(move);
-				}
-				return pegsCache;
-			}
-		}
-
-		public virtual short Move
+		public virtual int[] Move
 		{
 			get
 			{
@@ -123,16 +111,16 @@ namespace bb.mastermind.tree
 		/* Rather Unimportant Implementations */
 		public override bool Equals(object obj)
 		{
-			return obj is MoveNode && this.move == ((MoveNode) obj).move;
+			return obj is MoveNode && move.SequenceEqual(((MoveNode) obj).move);
 		}
 
 		public class GradeNode : IComparable<GradeNode>
 		{
-			private readonly MoveNode outerInstance;
+			protected readonly MoveNode outerInstance;
 
 
 			protected internal readonly int gradeID;
-			protected internal HashSet<short> possibilities;
+			protected internal HashSet<int[]> possibilities;
 			public HashSet<MoveNode> followingMoves;
 
 			public sbyte gradeWhite;
@@ -142,18 +130,18 @@ namespace bb.mastermind.tree
 			{
 				this.outerInstance = outerInstance;
 				this.gradeID = gradeID;
+                possibilities = new HashSet<int[]>();
+                followingMoves = new HashSet<MoveNode>();
 				init();
 			}
 
 			protected internal virtual void init()
 			{
-				possibilities = new HashSet<short>();
-                followingMoves = new HashSet<MoveNode>();
 				extractGrades();
-				reduceParentPossibilities();
+                ParentGradeNode.forEachPossibility(s => { if (checkSingleConsistency(s)) possibilities.Add(s); });
 			}
 
-			public virtual MoveNode addSubMove(short move)
+			public virtual MoveNode addSubMove(int[] move)
 			{
 				MoveNode subMove = new MoveNode(move, this, outerInstance.config);
 				followingMoves.Add(subMove);
@@ -165,7 +153,7 @@ namespace bb.mastermind.tree
 			/// </summary>
 			/// <param name="move">
 			/// @return </param>
-			public virtual MoveNode addTemporarySubMove(short move)
+			public virtual MoveNode addTemporarySubMove(int[] move)
 			{
 				return new MoveNode(move, this, outerInstance.config);
 			}
@@ -204,16 +192,15 @@ namespace bb.mastermind.tree
 				return 0;
 			}
 
-			public virtual bool checkSingleConsistency(short testMove)
+			public virtual bool checkSingleConsistency(int[] testMove)
 			{
-				int[] move1 = outerInstance.SinglePegs;
-				int[] move2 = outerInstance.config.getSinglePegs(testMove);
+				int[] move1 = outerInstance.Move;
 				int checkBlack = 0;
 				int checkWhite = 0;
 
 				for (int i = 0; i < move1.Length; i++)
 				{
-					if (move1[i] == move2[i])
+					if (move1[i] == testMove[i])
 					{
 						checkBlack++;
 					}
@@ -227,7 +214,7 @@ namespace bb.mastermind.tree
 				for (int i = 0; i < outerInstance.config.pegs; i++)
 				{
 					colors[move1[i]]++;
-					colors[move2[i]]--;
+					colors[testMove[i]]--;
 				}
 				foreach (sbyte color in colors)
 				{
@@ -237,33 +224,12 @@ namespace bb.mastermind.tree
 				return checkWhite == gradeWhite;
 			}
 
-			public virtual bool checkConsistencyTree(short testMove)
-			{
-				return checkSingleConsistency(testMove) && (outerInstance.parent == null || outerInstance.parent.checkConsistencyTree(testMove));
-			}
-
-			protected internal virtual void reduceParentPossibilities()
-			{
-				if (outerInstance.parent is RootNode.RootGrade)
-				{
-                    for (short s = short.MinValue; s < short.MinValue + outerInstance.config.combinations; s++ )
-                    {
-                        if (checkSingleConsistency(s))
-                        {
-                            possibilities.Add(s);
-                        }
-                    }
-					return;
-				}
-				for (IEnumerator<short> it = outerInstance.parent.possibilities.GetEnumerator(); it.MoveNext();)
-				{
-					short s = it.Current;
-					if (checkSingleConsistency(s))
-					{
-						possibilities.Add(s);
-					}
-				}
-			}
+            protected internal virtual void forEachPossibility(Action<int[]> a)
+            {
+                foreach(int[] t in possibilities) {
+                    a(t);
+                }
+            }
 
 			public virtual MoveNode MoveNode
 			{

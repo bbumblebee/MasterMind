@@ -41,7 +41,7 @@ namespace bb.mastermind.tree
 				{
 					break;
 				}
-				int[] pegs = lowestNode.MoveNode.SinglePegs;
+				int[] pegs = lowestNode.MoveNode.Move;
 				if (currentNode.gradeWhite == 0 && currentNode.gradeBlack == 0)
 				{
 					foreach (int peg in pegs)
@@ -74,7 +74,7 @@ namespace bb.mastermind.tree
 			int UnusedNumber = 0;
 			bool anySymmetries = false;
 			bool allUnused = true;
-			int[] currentSet = move.SinglePegs;
+			int[] currentSet = move.Move;
 
 			for (int i = 0; i < currentSet.Length; i++) // loop through
 			{

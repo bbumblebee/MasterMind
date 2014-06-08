@@ -87,7 +87,7 @@ namespace bb.mastermind.ui
 		{
 			Console.WriteLine("Grading Prompt - Enter Grades: blacks,whites");
             MoveNode move = mm.CurrentPos.followingMoves.GetEnumerator().Current;
-			Console.WriteLine("Move to Grade: " + String.Join(",", move.SinglePegs));
+			Console.WriteLine("Move to Grade: " + String.Join(",", move.Move));
 			while (true)
 			{
 				string input = Console.ReadLine();
@@ -105,7 +105,7 @@ namespace bb.mastermind.ui
 		private void analysis()
 		{
 			Console.WriteLine("Starting Root Analysis...");
-			Type assessClass = typeof(MaxSizeAssessor);
+			Type assessClass = typeof(EntropyAssessor);
             Stopwatch st = Stopwatch.StartNew();
 			MoveNode mn = mm.runOneStepAheadAnalysis(assessClass);
             Console.WriteLine("Time Taken: " + st.ElapsedMilliseconds + " ms");
@@ -140,7 +140,7 @@ namespace bb.mastermind.ui
 		/* Helper Functions */
 		private void printResultMove(MoveNode mn)
 		{
-			Console.WriteLine("Calculated Best Move: " + String.Join(", ", mn.SinglePegs));
+			Console.WriteLine("Calculated Best Move: " + String.Join(", ", mn.Move));
 			Console.WriteLine("Value attributed to this move: " + mn.AssessmentValue);
 			Console.WriteLine("Additional Information: \np: Print Possibility-Size-List ");
 			Console.WriteLine("q: Exits this prompt, and continues with further calculation");

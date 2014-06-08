@@ -18,7 +18,7 @@ namespace bb.mastermind.core
 	public class MasterMind
 	{
 		private readonly Config config;
-		private readonly MoveNode.GradeNode root;
+		private readonly RootNode.RootGrade root;
 		private MoveNode.GradeNode currentPos;
 
 		public MasterMind(int pegs, int colors)
@@ -46,7 +46,7 @@ namespace bb.mastermind.core
 
 		public virtual void addGradedMove(int[] pegs, int whites, int blacks)
 		{
-			MoveNode tmpMove = currentPos.addSubMove(config.makePegSet(pegs));
+			MoveNode tmpMove = currentPos.addSubMove(pegs);
 			currentPos = tmpMove.addSubGrade(config.array2id[blacks][whites]);
 		}
 
@@ -55,8 +55,8 @@ namespace bb.mastermind.core
 			AssessmentManager manager = new AssessmentManager(config, assessor, currentPos.PossibilitySize);
 			SymmetryEnvironment symmetryEnvironment = new SymmetryEnvironment(currentPos);
 			ResultSet resultSet = new ResultSet(symmetryEnvironment, config);
-            Parallel.For(short.MinValue, short.MinValue + config.combinations, m => {
-                MoveNode testMove = currentPos.addTemporarySubMove((short)m);
+            root.forEachParallelPossibility( m => {
+                MoveNode testMove = currentPos.addTemporarySubMove(m);
                 PossibilityDivisionAssessor assess = manager.getSetAssessor();
                 if (!resultSet.symmetryEnvironment.checkSymmetry(testMove))
                 {
